@@ -30,7 +30,8 @@ public class Entry {
       dueDate = "",
       submittedDate = "",
       occurredDate = "",
-      createdAt = "";
+      createdAt = "",
+      updatedAt = "";
 
   @Column(length = 20000)
   public String notes = "";

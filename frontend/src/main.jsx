@@ -1,3 +1,4 @@
+import OpportunityTable from "./OpportunityTable";
 import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -831,6 +832,14 @@ function App() {
                     </button>
                   )}
                 </div>
+              ) : page === "opportunity" && !query ? (
+                <OpportunityTable
+                  opportunities={visible}
+                  records={records}
+                  onOpen={setDetail}
+                  badge={badge}
+                  dateLabel={dateLabel}
+                />
               ) : (
                 <div className="record-list">
                   {visible.map((r) =>

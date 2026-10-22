@@ -1488,3 +1488,88 @@ textarea {
   font-size: 10px;
   color: var(--muted);
 }
+
+.opportunity-table-scroll {
+  overflow-x: auto;
+}
+.opportunity-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  table-layout: fixed;
+  min-width: 800px;
+}
+.opportunity-table th {
+  background: #f9faf7;
+  color: #84917d;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--line);
+}
+.opportunity-table th:nth-child(1) {
+  width: 24%;
+}
+.opportunity-table th:nth-child(2) {
+  width: 13%;
+}
+.opportunity-table th:nth-child(3) {
+  width: 15%;
+}
+.opportunity-table th:nth-child(4) {
+  width: 22%;
+}
+.opportunity-table th:nth-child(5) {
+  width: 26%;
+}
+.opportunity-table td {
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.opportunity-table tr:last-child td {
+  border-bottom: 0;
+}
+.opportunity-table tbody tr:hover {
+  background: #fafbf7;
+}
+.opportunity-title,
+.next-action-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  line-height: 1.6;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+}
+.opportunity-title:hover,
+.next-action-button:hover {
+  text-decoration: underline;
+}
+.next-action-button {
+  font-size: 11px;
+  font-weight: 500;
+}
+.table-company {
+  display: block;
+  font-size: 10px;
+  color: #8a9782;
+  margin-top: 6px;
+}
+.table-date {
+  font-size: 11px;
+  color: #71816a;
+}
+.opportunity-notes {
+  white-space: pre-wrap;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #75846c;
+}
+.table-placeholder {
+  font-size: 11px;
+  color: #9ba690;
+}

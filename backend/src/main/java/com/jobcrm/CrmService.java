@@ -64,6 +64,7 @@ public class CrmService {
       try {
         if (field.getType() == String.class) {
           String value = (String) field.get(e);
+          if (field.getName().equals("updatedAt") && value == null) continue;
           require(value != null, "Fields cannot be null");
           require(
               value.length() <= (field.getName().equals("notes") ? 20000 : 1000), "Field too long");
@@ -143,9 +144,11 @@ public class CrmService {
     require(e.kind != null && KINDS.contains(e.kind), "Unknown record type");
     Entry old = id == null ? null : get(owner, id);
     if (old != null) require(old.kind.equals(e.kind), "Record type cannot change");
+    String previousOpportunityId = old == null ? "" : old.opportunityId;
     e.id = id == null ? UUID.randomUUID().toString() : id;
     e.ownerId = owner;
     e.createdAt = old == null ? Instant.now().toString() : old.createdAt;
+    e.updatedAt = Instant.now().toString();
     e.automatic = old != null && old.automatic;
     var all = list(owner);
     validate(e, all);
@@ -183,9 +186,14 @@ public class CrmService {
             && task.opportunityId.equals(e.opportunityId)
             && !task.completed) {
           task.completed = true;
+          task.updatedAt = e.updatedAt;
           entries.save(task);
         }
-    return entries.save(e);
+    Entry saved = entries.save(e);
+    touchOpportunity(owner, e.opportunityId);
+    if (!previousOpportunityId.equals(e.opportunityId))
+      touchOpportunity(owner, previousOpportunityId);
+    return saved;
   }
 
   void createFollowup(String owner, Entry app, LocalDate date, String title) {
@@ -198,6 +206,7 @@ public class CrmService {
     t.dueDate = date.toString();
     t.automatic = true;
     t.createdAt = Instant.now().toString();
+    t.updatedAt = t.createdAt;
     entries.save(t);
   }
 
@@ -219,6 +228,14 @@ public class CrmService {
           all.stream().noneMatch(x -> x.automatic && x.opportunityId.equals(e.opportunityId)),
           "Delete this application's automatic follow-ups first");
     entries.delete(e);
+    touchOpportunity(owner, e.opportunityId);
+  }
+
+  private void touchOpportunity(String owner, String id) {
+    if (id == null || id.isBlank()) return;
+    Entry opportunity = get(owner, id);
+    opportunity.updatedAt = Instant.now().toString();
+    entries.save(opportunity);
   }
 
   @Transactional

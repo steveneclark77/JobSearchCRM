@@ -50,7 +50,34 @@ test("personal job search, relationships, follow-ups, search, backup and restore
     .getByLabel("Source contact")
     .selectOption({ label: "Alex Rivera" });
   await dialog.getByRole("checkbox", { name: "Alex Rivera" }).check();
+  await dialog
+    .getByLabel("Notes", { exact: true })
+    .fill("Ask about the platform team's priorities.");
   await dialog.getByRole("button", { name: "Save opportunity" }).click();
+  const opportunities = page.getByRole("table");
+  for (const column of [
+    "Opportunity",
+    "Status",
+    "Last updated",
+    "Next action",
+    "Notes",
+  ]) {
+    await expect(
+      opportunities.getByRole("columnheader", { name: column, exact: true }),
+    ).toBeVisible();
+  }
+  await expect(opportunities.getByText("Lead", { exact: true })).toBeVisible();
+  await expect(
+    opportunities.getByText("No next action", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    opportunities.getByText("Ask about the platform team's priorities.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    opportunities.getByText("Not recorded", { exact: true }),
+  ).toHaveCount(0);
   await page.getByText("Senior Software Engineer", { exact: true }).click();
   await page.getByRole("button", { name: "Track application" }).click();
   dialog = page.getByRole("dialog", { name: "Add application" });
@@ -61,6 +88,27 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   await dialog.getByRole("button", { name: "Save application" }).click();
   await expect(page.getByRole("button", { name: "Follow Up" })).toBeVisible();
   await page.getByRole("button", { name: "Close details" }).click();
+  await expect(
+    opportunities.getByText("Follow Up", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    opportunities.getByRole("button", { name: "First follow-up", exact: true }),
+  ).toBeVisible();
+  await expect(
+    opportunities.getByRole("button", {
+      name: "Second follow-up",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await opportunities
+    .getByRole("button", { name: "First follow-up", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Record details" })
+      .getByRole("heading", { name: "First follow-up", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close details" }).click();
   await page.getByRole("button", { name: "To-dos", exact: true }).click();
   await expect(
     page.getByText("First follow-up", { exact: true }),
@@ -70,6 +118,39 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   ).toBeVisible();
   await expect(page.getByText("Oct 26", { exact: true })).toBeVisible();
   await expect(page.getByText("Oct 29", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Complete First follow-up", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Opportunities", exact: true })
+    .click();
+  await expect(
+    opportunities.getByRole("button", {
+      name: "Second follow-up",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    opportunities.getByRole("button", { name: "First follow-up", exact: true }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: "/tmp/jobcrm-opportunities.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBeTruthy();
+  const listRegion = page.getByRole("region", { name: "Opportunities list" });
+  expect(
+    await listRegion.evaluate(
+      (element) => element.scrollWidth > element.clientWidth,
+    ),
+  ).toBeTruthy();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("button", { name: "To-dos", exact: true }).click();
   await page.getByRole("button", { name: "Edit to-do" }).first().click();
   dialog = page.getByRole("dialog", { name: "Edit to-do" });
   await dialog.getByLabel("Due date").fill("2026-11-02");

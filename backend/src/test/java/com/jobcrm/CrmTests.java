@@ -126,6 +126,18 @@ class CrmTests {
     a.submittedDate = "2026-10-23";
     var application = create(session, a);
     assertThat(application.get("status").asText()).isEqualTo("follow-up");
+    assertThat(Instant.parse(application.get("updatedAt").asText()))
+        .isAfterOrEqualTo(Instant.parse(application.get("createdAt").asText()));
+    var refreshed =
+        mapper.readTree(
+            mvc.perform(get("/api/entries").session(session))
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    for (var row : refreshed)
+      if (row.get("id").asText().equals(opportunity.get("id").asText()))
+        assertThat(Instant.parse(row.get("updatedAt").asText()))
+            .isAfter(Instant.parse(opportunity.get("updatedAt").asText()));
     var backup =
         mapper.readTree(
             mvc.perform(get("/api/backup").session(session))
