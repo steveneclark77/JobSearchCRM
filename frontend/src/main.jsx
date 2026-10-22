@@ -1206,6 +1206,14 @@ function App() {
                 </div>
                 {all("todo")
                   .filter((t) => t.opportunityId === currentDetail.id)
+                  .sort(
+                    (a, b) =>
+                      (a.dueDate || "9999-12-31").localeCompare(
+                        b.dueDate || "9999-12-31",
+                      ) ||
+                      a.createdAt.localeCompare(b.createdAt) ||
+                      a.id.localeCompare(b.id),
+                  )
                   .map(taskRow)}
               </>
             )}
