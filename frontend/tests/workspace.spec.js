@@ -3,6 +3,12 @@ import { test, expect } from "@playwright/test";
 test("personal job search, relationships, follow-ups, search, backup and restore", async ({
   page,
 }) => {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
@@ -29,6 +35,7 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   await page.getByText("Alex Rivera", { exact: true }).click();
   await page.getByRole("button", { name: "Log interaction" }).click();
   dialog = page.getByRole("dialog", { name: "Add interaction" });
+  await expect(dialog.getByLabel("Date", { exact: true })).toHaveValue(today);
   await dialog.getByLabel("Interaction type / subject").fill("Networking call");
   await dialog
     .getByLabel("What happened?")
@@ -81,12 +88,31 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   await page.getByText("Senior Software Engineer", { exact: true }).click();
   await page.getByRole("button", { name: "Track application" }).click();
   dialog = page.getByRole("dialog", { name: "Add application" });
+  await expect(dialog.getByLabel("Submission date")).toHaveValue(today);
+  await dialog.getByRole("button", { name: "Save application" }).click();
+  await expect(
+    page.getByRole("button", { name: "Lead", exact: true }),
+  ).toBeVisible();
+  const leadRecords = await page.request
+    .get("/api/entries")
+    .then((r) => r.json());
+  expect(leadRecords.find((r) => r.kind === "application").submittedDate).toBe(
+    "",
+  );
+  expect(leadRecords.filter((r) => r.kind === "todo")).toHaveLength(0);
+  await page.getByRole("button", { name: "Lead", exact: true }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  dialog = page.getByRole("dialog", { name: "Edit application" });
   await dialog
     .getByRole("combobox", { name: "Stage", exact: true })
     .selectOption("submit");
   await dialog.getByLabel("Submission date").fill("2026-10-23");
   await dialog.getByRole("button", { name: "Save application" }).click();
-  await expect(page.getByRole("button", { name: "Follow Up" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Record details" })
+      .getByText("Follow Up", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Close details" }).click();
   await expect(
     opportunities.getByText("Follow Up", { exact: true }),
@@ -110,6 +136,10 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   ).toBeVisible();
   await page.getByRole("button", { name: "Close details" }).click();
   await page.getByRole("button", { name: "To-dos", exact: true }).click();
+  await page.getByRole("button", { name: "Add to-do", exact: true }).click();
+  const newTodo = page.getByRole("dialog", { name: "Add to-do" });
+  await expect(newTodo.getByLabel("Due date")).toHaveValue(today);
+  await newTodo.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(
     page.getByText("First follow-up", { exact: true }),
   ).toBeVisible();
@@ -153,6 +183,7 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   await page.getByRole("button", { name: "To-dos", exact: true }).click();
   await page.getByRole("button", { name: "Edit to-do" }).first().click();
   dialog = page.getByRole("dialog", { name: "Edit to-do" });
+  await expect(dialog.getByLabel("Due date")).toHaveValue("2026-10-29");
   await dialog.getByLabel("Due date").fill("2026-11-02");
   await dialog.getByRole("button", { name: "Save to-do" }).click();
   await expect(page.getByText("Nov 2", { exact: true })).toBeVisible();

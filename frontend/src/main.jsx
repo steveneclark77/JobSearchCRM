@@ -122,8 +122,8 @@ const blank = (kind) => ({
   status: kind === "application" ? "lead" : "",
   opportunityId: "",
   contactId: "",
-  dueDate: "",
-  submittedDate: "",
+  dueDate: kind === "todo" ? localToday() : "",
+  submittedDate: kind === "application" ? localToday() : "",
   occurredDate: kind === "interaction" ? localToday() : "",
   notes: "",
   contactIds: [],
@@ -230,9 +230,17 @@ function App() {
     setBusy(true);
     setError("");
     try {
+      const payload = { ...modal };
+      if (
+        !modal.id &&
+        modal.kind === "application" &&
+        ["lead", "research"].includes(modal.status)
+      ) {
+        payload.submittedDate = "";
+      }
       await api("/entries" + (modal.id ? "/" + modal.id : ""), {
         method: modal.id ? "PUT" : "POST",
-        body: JSON.stringify(modal),
+        body: JSON.stringify(payload),
       });
       await refresh();
       setModal(null);
@@ -1498,9 +1506,11 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
                 <div className="info">
                   <Clock3 size={18} />
                   <p>
-                    Set a submission date to create two editable follow-up
-                    tasks: next business day, then 3 business days later.
-                    Existing tasks keep their dates if you edit this date.
+                    Choose Submit to record the submission date and create two
+                    editable follow-up tasks: next business day, then 3 business
+                    days later. New Lead and Research applications stay
+                    unsubmitted. Existing tasks keep their dates if you edit
+                    this date.
                   </p>
                 </div>
               </>
