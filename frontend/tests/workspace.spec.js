@@ -50,6 +50,12 @@ test("personal job search, relationships, follow-ups, search, backup and restore
     .click();
   await page.getByRole("button", { name: "Add opportunity" }).first().click();
   dialog = page.getByRole("dialog", { name: "Add opportunity" });
+  await expect(
+    dialog.getByRole("combobox", { name: "Status", exact: true }),
+  ).toHaveValue("submit");
+  await dialog
+    .getByRole("combobox", { name: "Status", exact: true })
+    .selectOption("lead");
   await dialog.getByLabel("Position title").fill("Senior Software Engineer");
   await dialog.getByLabel("Company *", { exact: true }).fill("Acme");
   await dialog.getByLabel("Source (e.g.").fill("Referral");
@@ -86,10 +92,6 @@ test("personal job search, relationships, follow-ups, search, backup and restore
     opportunities.getByText("Not recorded", { exact: true }),
   ).toHaveCount(0);
   await page.getByText("Senior Software Engineer", { exact: true }).click();
-  await page.getByRole("button", { name: "Track application" }).click();
-  dialog = page.getByRole("dialog", { name: "Add application" });
-  await expect(dialog.getByLabel("Submission date")).toHaveValue(today);
-  await dialog.getByRole("button", { name: "Save application" }).click();
   await expect(
     page.getByRole("button", { name: "Lead", exact: true }),
   ).toBeVisible();
@@ -215,6 +217,45 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   await page.getByRole("button", { name: "Contacts", exact: true }).click();
   await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
   await expect(page.getByText("Temporary", { exact: true })).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Opportunities", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Add opportunity", exact: true })
+    .click();
+  dialog = page.getByRole("dialog", { name: "Add opportunity" });
+  await expect(
+    dialog.getByRole("combobox", { name: "Status", exact: true }),
+  ).toHaveValue("submit");
+  await dialog.getByLabel("Position title").fill("New submitted opportunity");
+  await dialog.getByLabel("Company *", { exact: true }).fill("Example Company");
+  await dialog.getByLabel("Source (e.g.").fill("Wellfound");
+  await dialog.getByRole("button", { name: "Save opportunity" }).click();
+  const submittedRow = page
+    .getByRole("row")
+    .filter({ hasText: "New submitted opportunity" });
+  await expect(
+    submittedRow.getByText("Follow Up", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    submittedRow.getByRole("button", { name: "First follow-up", exact: true }),
+  ).toBeVisible();
+  await submittedRow
+    .getByRole("button", { name: "New submitted opportunity", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  dialog = page.getByRole("dialog", { name: "Edit opportunity" });
+  await expect(
+    dialog.getByRole("combobox", { name: "Status", exact: true }),
+  ).toHaveValue("follow-up");
+  await dialog
+    .getByRole("combobox", { name: "Status", exact: true })
+    .selectOption("interview");
+  await dialog.getByRole("button", { name: "Save opportunity" }).click();
+  await page.getByRole("button", { name: "Close details" }).click();
+  await expect(
+    submittedRow.getByText("Interview", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Overview", exact: true }).click();
   await page.screenshot({ path: "/tmp/jobcrm-dashboard.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });

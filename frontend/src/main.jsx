@@ -119,7 +119,8 @@ const blank = (kind) => ({
   relationship: kind === "contact" ? "network" : "",
   url: "",
   source: "",
-  status: kind === "application" ? "lead" : "",
+  status:
+    kind === "opportunity" ? "submit" : kind === "application" ? "lead" : "",
   opportunityId: "",
   contactId: "",
   dueDate: kind === "todo" ? localToday() : "",
@@ -223,7 +224,13 @@ function App() {
   }
   function edit(kind, extra = {}) {
     setError("");
-    setModal({ ...blank(kind), ...extra });
+    const draft = { ...blank(kind), ...extra };
+    if (kind === "opportunity" && extra.id) {
+      draft.status =
+        all("application").find((a) => a.opportunityId === extra.id)?.status ||
+        "lead";
+    }
+    setModal(draft);
   }
   async function save(e) {
     e.preventDefault();
@@ -1548,6 +1555,25 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
                 {m.kind === "opportunity" ? (
                   <>
                     {input("company", "Company *", "text", true)}
+                    <label>
+                      Status
+                      <select
+                        value={m.status}
+                        onChange={(e) => set("status", e.target.value)}
+                      >
+                        {statuses.map((status) => (
+                          <option key={status} value={status}>
+                            {labels(status)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <p className="fineprint">
+                      Submit records today's submission and schedules
+                      follow-ups. The application then moves to Follow Up.
+                      Choose Lead or Research to save an unsubmitted
+                      opportunity.
+                    </p>
                     {input("url", "Job posting URL", "url")}
                     {input(
                       "source",

@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class CrmTests {
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper mapper;
+  @Autowired CrmService service;
 
   @Test
   void businessDaySchedule() {
@@ -37,6 +38,83 @@ class CrmTests {
         .isEqualTo(LocalDate.of(2026, 10, 28));
     assertThat(CrmService.businessDays(LocalDate.of(2026, 12, 24), 1))
         .isEqualTo(LocalDate.of(2026, 12, 25));
+  }
+
+  @Test
+  void opportunityStatusCreatesAndUpdatesOneApplicationWithFollowups() {
+    String owner = "opportunity-status-test";
+    Entry opportunity = new Entry();
+    opportunity.kind = "opportunity";
+    opportunity.title = "Engineer";
+    opportunity.company = "Acme";
+    opportunity.source = "Wellfound";
+    opportunity.status = "lead";
+    opportunity = service.save(owner, null, opportunity);
+    Entry application =
+        service.list(owner).stream()
+            .filter(e -> e.kind.equals("application"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(application.status).isEqualTo("lead");
+    assertThat(application.submittedDate).isEmpty();
+    assertThat(service.list(owner).stream().filter(e -> e.kind.equals("todo"))).isEmpty();
+    application.notes = "Keep these application notes";
+    service.save(owner, application.id, application);
+    opportunity.status = "submit";
+    opportunity = service.save(owner, opportunity.id, opportunity);
+    var submitted = service.list(owner);
+    assertThat(submitted.stream().filter(e -> e.kind.equals("application"))).hasSize(1);
+    application =
+        submitted.stream().filter(e -> e.kind.equals("application")).findFirst().orElseThrow();
+    assertThat(application.status).isEqualTo("follow-up");
+    assertThat(application.submittedDate).isEqualTo(CrmService.today().toString());
+    assertThat(application.notes).isEqualTo("Keep these application notes");
+    var tasks = submitted.stream().filter(e -> e.kind.equals("todo")).toList();
+    assertThat(tasks).hasSize(2);
+    assertThat(tasks.stream().map(e -> e.dueDate))
+        .containsExactlyInAnyOrder(
+            CrmService.businessDays(CrmService.today(), 1).toString(),
+            CrmService.businessDays(CrmService.today(), 4).toString());
+    Entry editedTask = tasks.getFirst();
+    editedTask.dueDate = "2030-01-01";
+    service.save(owner, editedTask.id, editedTask);
+    opportunity.status = "interview";
+    opportunity.notes = "Opportunity notes changed";
+    opportunity = service.save(owner, opportunity.id, opportunity);
+    var updated = service.list(owner);
+    assertThat(updated.stream().filter(e -> e.kind.equals("application"))).hasSize(1);
+    assertThat(
+            updated.stream()
+                .filter(e -> e.kind.equals("application"))
+                .findFirst()
+                .orElseThrow()
+                .status)
+        .isEqualTo("interview");
+    assertThat(updated.stream().filter(e -> e.kind.equals("todo"))).hasSize(2);
+    assertThat(
+            updated.stream()
+                .filter(e -> e.id.equals(editedTask.id))
+                .findFirst()
+                .orElseThrow()
+                .dueDate)
+        .isEqualTo("2030-01-01");
+    opportunity.status = "rejection";
+    service.save(owner, opportunity.id, opportunity);
+    assertThat(
+            service.list(owner).stream()
+                .filter(e -> e.kind.equals("todo"))
+                .allMatch(e -> e.completed))
+        .isTrue();
+    Entry invalid = new Entry();
+    invalid.kind = "opportunity";
+    invalid.title = "Invalid";
+    invalid.company = "Acme";
+    invalid.source = "Test";
+    invalid.status = "invalid";
+    int count = service.list(owner).size();
+    assertThatThrownBy(() -> service.save(owner, null, invalid))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+    assertThat(service.list(owner)).hasSize(count);
   }
 
   JsonNode create(MockHttpSession session, Entry e) throws Exception {

@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class CrmService {
   final Entries entries;
+  final com.fasterxml.jackson.databind.ObjectMapper mapper;
   static final Set<String> KINDS =
       Set.of("contact", "opportunity", "application", "todo", "interaction");
   static final Set<String> STATUSES =
@@ -27,8 +28,9 @@ public class CrmService {
           "closed");
   static final Set<String> CLOSED = Set.of("rejection", "withdrawn", "closed", "offer");
 
-  public CrmService(Entries entries) {
+  public CrmService(Entries entries, com.fasterxml.jackson.databind.ObjectMapper mapper) {
     this.entries = entries;
+    this.mapper = mapper;
   }
 
   static void require(boolean ok, String message) {
@@ -152,6 +154,10 @@ public class CrmService {
     e.automatic = old != null && old.automatic;
     var all = list(owner);
     validate(e, all);
+    String opportunityStatus = e.kind.equals("opportunity") ? e.status : "";
+    if (!opportunityStatus.isBlank())
+      require(STATUSES.contains(opportunityStatus), "Invalid opportunity status");
+    if (e.kind.equals("opportunity")) e.status = "";
     e.history = old == null ? new ArrayList<>() : new ArrayList<>(old.history);
     if (e.kind.equals("application") && (old == null || !old.status.equals(e.status)))
       e.history.add(Instant.now() + " | " + e.status);
@@ -190,10 +196,29 @@ public class CrmService {
           entries.save(task);
         }
     Entry saved = entries.save(e);
+    if (!opportunityStatus.isBlank()) saveOpportunityStatus(owner, saved.id, opportunityStatus);
     touchOpportunity(owner, e.opportunityId);
     if (!previousOpportunityId.equals(e.opportunityId))
       touchOpportunity(owner, previousOpportunityId);
     return saved;
+  }
+
+  private void saveOpportunityStatus(String owner, String opportunityId, String status) {
+    Entry existing =
+        list(owner).stream()
+            .filter(
+                entry ->
+                    entry.kind.equals("application") && entry.opportunityId.equals(opportunityId))
+            .findFirst()
+            .orElse(null);
+    Entry application = existing == null ? new Entry() : mapper.convertValue(existing, Entry.class);
+    application.kind = "application";
+    application.opportunityId = opportunityId;
+    application.status = status;
+    if (application.submittedDate.isBlank()
+        && Set.of("submit", "follow-up", "interview", "pending", "offer").contains(status))
+      application.submittedDate = today().toString();
+    save(owner, existing == null ? null : existing.id, application);
   }
 
   void createFollowup(String owner, Entry app, LocalDate date, String title) {
