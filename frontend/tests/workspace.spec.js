@@ -29,10 +29,25 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   await dialog.getByLabel("First name").fill("Alex");
   await dialog.getByLabel("Last name").fill("Rivera");
   await dialog.getByLabel("Email address").fill("alex@example.com");
+  await dialog.getByLabel("Phone number").fill("+1 (415) 555-0123 ext. 42");
+  await dialog
+    .getByLabel("LinkedIn URL")
+    .fill("https://www.linkedin.com/in/alex-rivera");
   await dialog.getByLabel("Company").fill("Acme");
   await dialog.getByRole("button", { name: "Save contact" }).click();
   await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
   await page.getByText("Alex Rivera", { exact: true }).click();
+  await expect(
+    page
+      .getByRole("dialog")
+      .getByText("+1 (415) 555-0123 ext. 42", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", {
+      name: "https://www.linkedin.com/in/alex-rivera",
+      exact: true,
+    }),
+  ).toHaveAttribute("href", "https://www.linkedin.com/in/alex-rivera");
   await page.getByRole("button", { name: "Log interaction" }).click();
   dialog = page.getByRole("dialog", { name: "Add interaction" });
   await expect(dialog.getByLabel("Date", { exact: true })).toHaveValue(today);
@@ -45,6 +60,11 @@ test("personal job search, relationships, follow-ups, search, backup and restore
     page.getByText("Discussed the platform team and a referral."),
   ).toBeVisible();
   await page.getByRole("button", { name: "Close details" }).click();
+  for (const term of ["555-0123", "linkedin.com/in/alex-rivera"]) {
+    await page.getByLabel("Search all records").fill(term);
+    await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Clear search" }).click();
   await page
     .getByRole("button", { name: "Opportunities", exact: true })
     .click();

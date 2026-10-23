@@ -115,6 +115,8 @@ const blank = (kind) => ({
   firstName: "",
   lastName: "",
   email: "",
+  phone: "",
+  linkedinUrl: "",
   company: "",
   relationship: kind === "contact" ? "network" : "",
   url: "",
@@ -361,6 +363,8 @@ function App() {
           r.firstName,
           r.lastName,
           r.email,
+          r.phone,
+          r.linkedinUrl,
           r.company,
           r.source,
           r.status,
@@ -882,7 +886,9 @@ function App() {
                           </strong>
                           <span>
                             {r.kind === "contact"
-                              ? [r.company, r.email].filter(Boolean).join(" · ")
+                              ? [r.company, r.email, r.phone]
+                                  .filter(Boolean)
+                                  .join(" · ")
                               : r.kind === "application"
                                 ? opp(r)?.company
                                 : r.company}
@@ -1048,6 +1054,8 @@ function App() {
             <dl>
               {[
                 ["Email", currentDetail.email],
+                ["Phone", currentDetail.phone],
+                ["LinkedIn", currentDetail.linkedinUrl],
                 ["Relationship", currentDetail.relationship],
                 ["Source", currentDetail.source],
                 ["Due", currentDetail.dueDate],
@@ -1058,7 +1066,24 @@ function App() {
                 .map(([k, v]) => (
                   <React.Fragment key={k}>
                     <dt>{k}</dt>
-                    <dd className="prewrap">{v}</dd>
+                    <dd className="prewrap">
+                      {k === "LinkedIn" ? (
+                        <a
+                          className="contact-link"
+                          href={v}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {v}
+                        </a>
+                      ) : k === "Email" ? (
+                        <a className="contact-link" href={"mailto:" + v}>
+                          {v}
+                        </a>
+                      ) : (
+                        v
+                      )}
+                    </dd>
                   </React.Fragment>
                 ))}
             </dl>
@@ -1470,7 +1495,9 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
                   {input("firstName", "First name")}
                   {input("lastName", "Last name")}
                 </div>
-                {input("email", "Email address", "email")}
+                {input("email", "Email address (optional)", "email")}
+                {input("phone", "Phone number (optional)", "tel")}
+                {input("linkedinUrl", "LinkedIn URL (optional)", "url")}
                 {input("company", "Company")}
                 <label>
                   Relationship

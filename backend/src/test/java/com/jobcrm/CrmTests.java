@@ -117,6 +117,43 @@ class CrmTests {
     assertThat(service.list(owner)).hasSize(count);
   }
 
+  @Test
+  void optionalContactMethodsAndLinkedInValidation() {
+    String owner = "contact-method-test";
+    Entry contact = new Entry();
+    contact.kind = "contact";
+    contact.firstName = "Sam";
+    contact.phone = null;
+    contact.linkedinUrl = null;
+    contact = service.save(owner, null, contact);
+    assertThat(contact.email).isEmpty();
+    assertThat(contact.phone).isEmpty();
+    assertThat(contact.linkedinUrl).isEmpty();
+    contact.email = "sam@example.com";
+    contact.phone = "+44 (0)20 7946 0123 ext. 456";
+    contact.linkedinUrl = "https://www.linkedin.com/in/sam-example";
+    contact = service.save(owner, contact.id, contact);
+    Entry persisted = service.list(owner).getFirst();
+    assertThat(persisted.phone).isEqualTo("+44 (0)20 7946 0123 ext. 456");
+    assertThat(persisted.linkedinUrl).isEqualTo("https://www.linkedin.com/in/sam-example");
+    for (String invalid :
+        List.of(
+            "javascript:alert(1)",
+            "https://linkedin.com.evil.example/in/sam",
+            "https://example.com/in/sam",
+            "https://user@linkedin.com/in/sam")) {
+      Entry bad = mapper.convertValue(persisted, Entry.class);
+      bad.linkedinUrl = invalid;
+      assertThatThrownBy(() -> service.save(owner, bad.id, bad))
+          .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+    }
+    persisted.email = "";
+    persisted.phone = "";
+    persisted.linkedinUrl = "";
+    service.save(owner, persisted.id, persisted);
+    assertThat(service.list(owner).getFirst().linkedinUrl).isEmpty();
+  }
+
   JsonNode create(MockHttpSession session, Entry e) throws Exception {
     return mapper.readTree(
         mvc.perform(
@@ -188,6 +225,8 @@ class CrmTests {
     c.kind = "contact";
     c.firstName = "Alex";
     c.email = "alex@example.com";
+    c.phone = "+1 (415) 555-0123 ext. 42";
+    c.linkedinUrl = "https://www.linkedin.com/in/alex-rivera";
     c.company = "Acme";
     var contact = create(session, c);
     Entry o = new Entry();
@@ -286,6 +325,30 @@ class CrmTests {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.restored").value(5));
     mvc.perform(get("/api/entries").session(session)).andExpect(jsonPath("$.length()").value(5));
+    var restoredContact =
+        mapper.readTree(
+            mvc.perform(get("/api/entries").session(session))
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    for (var entry : restoredContact)
+      if (entry.get("id").asText().equals(contact.get("id").asText())) {
+        assertThat(entry.get("phone").asText()).isEqualTo("+1 (415) 555-0123 ext. 42");
+        assertThat(entry.get("linkedinUrl").asText())
+            .isEqualTo("https://www.linkedin.com/in/alex-rivera");
+      }
+    var legacy = backup.deepCopy();
+    for (var entry : legacy.get("entries")) {
+      ((com.fasterxml.jackson.databind.node.ObjectNode) entry)
+          .remove(List.of("phone", "linkedinUrl"));
+    }
+    mvc.perform(
+            post("/api/restore")
+                .session(session)
+                .with(csrf())
+                .contentType("application/json")
+                .content(mapper.writeValueAsBytes(legacy)))
+        .andExpect(status().isOk());
     var closed = mapper.treeToValue(application, Entry.class);
     closed.status = "rejection";
     mvc.perform(

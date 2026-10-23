@@ -20,6 +20,8 @@ public class Entry {
       firstName = "",
       lastName = "",
       email = "",
+      phone = "",
+      linkedinUrl = "",
       company = "",
       relationship = "",
       url = "",

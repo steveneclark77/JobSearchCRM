@@ -1573,3 +1573,9 @@ textarea {
   font-size: 11px;
   color: #9ba690;
 }
+
+.contact-link {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

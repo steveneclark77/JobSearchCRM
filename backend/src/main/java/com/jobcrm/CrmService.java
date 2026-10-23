@@ -61,6 +61,9 @@ public class CrmService {
   }
 
   void validate(Entry e, List<Entry> all) {
+    // Existing databases and older backups do not contain these optional fields.
+    e.phone = e.phone == null ? "" : e.phone.strip();
+    e.linkedinUrl = e.linkedinUrl == null ? "" : e.linkedinUrl.strip();
     require(e.kind != null && KINDS.contains(e.kind), "Unknown record type");
     for (var field : Entry.class.getFields())
       try {
@@ -93,6 +96,19 @@ public class CrmService {
       require(
           e.email.isBlank() || e.email.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+"),
           "Invalid email address");
+    }
+    if (!e.linkedinUrl.isBlank()) {
+      try {
+        var uri = java.net.URI.create(e.linkedinUrl);
+        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        require(
+            Set.of("https", "http").contains(uri.getScheme())
+                && uri.getUserInfo() == null
+                && (host.equals("linkedin.com") || host.endsWith(".linkedin.com")),
+            "Use a complete LinkedIn URL, such as https://www.linkedin.com/in/name");
+      } catch (IllegalArgumentException ex) {
+        require(false, "Invalid LinkedIn URL");
+      }
     }
     if (Set.of("opportunity", "todo").contains(e.kind))
       require(!e.title.isBlank(), "Title is required");
