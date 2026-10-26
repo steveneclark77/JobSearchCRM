@@ -27,7 +27,7 @@ export default function OpportunityTable({
       <table className="opportunity-table">
         <thead>
           <tr>
-            <th scope="col">Opportunity</th>
+            <th scope="col">Company</th>
             <th scope="col">Status</th>
             <th scope="col">Last updated</th>
             <th scope="col">Next action</th>
@@ -62,9 +62,9 @@ export default function OpportunityTable({
                     className="opportunity-title"
                     onClick={() => onOpen(opportunity.id)}
                   >
-                    {opportunity.title}
+                    {opportunity.company}
                   </button>
-                  <span className="table-company">{opportunity.company}</span>
+                  <span className="table-company">{opportunity.title}</span>
                 </td>
                 <td>{badge(application?.status || "lead")}</td>
                 <td className="table-date">

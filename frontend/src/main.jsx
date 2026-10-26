@@ -12,6 +12,8 @@ import {
   ArrowUpRight,
   ArrowRight,
   ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   X,
   Download,
   Upload,
@@ -144,7 +146,23 @@ function App() {
     [toast, setToast] = useState(""),
     [busy, setBusy] = useState(false),
     [mobile, setMobile] = useState(false),
+    [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+      try {
+        return localStorage.getItem("jobcrm.sidebarCollapsed") === "true";
+      } catch {
+        return false;
+      }
+    }),
     [restore, setRestore] = useState(null);
+  function toggleSidebar() {
+    const collapsed = !sidebarCollapsed;
+    setSidebarCollapsed(collapsed);
+    try {
+      localStorage.setItem("jobcrm.sidebarCollapsed", String(collapsed));
+    } catch {
+      /* Navigation works without persistent storage. */
+    }
+  }
   const file = useRef();
   useEffect(() => {
     if (!modal && !detail && !restore) return;
@@ -431,10 +449,16 @@ function App() {
     );
   }
   return (
-    <div className="app">
-      <aside className={"sidebar " + (mobile ? "open" : "")}>
+    <div className={"app" + (sidebarCollapsed ? " sidebar-collapsed" : "")}>
+      <aside
+        id="workspace-navigation"
+        aria-label="Workspace navigation"
+        className={"sidebar " + (mobile ? "open" : "")}
+      >
         <a
           className="brand"
+          aria-label="Nextchapter overview"
+          title="Overview"
           href="#"
           onClick={(e) => {
             e.preventDefault();
@@ -444,7 +468,9 @@ function App() {
           <span className="brand-icon">
             <Sprout size={22} />
           </span>
-          nextchapter<span className="brand-dot">.</span>
+          <span className="brand-name">
+            nextchapter<span className="brand-dot">.</span>
+          </span>
         </a>
         <div className="workspace-label">PERSONAL WORKSPACE</div>
         <nav>
@@ -457,11 +483,13 @@ function App() {
           ].map(([Icon, p]) => (
             <button
               key={p}
+              aria-label={names[p]}
+              title={names[p]}
               className={page === p ? "active" : ""}
               onClick={() => navigate(p)}
             >
               <Icon size={19} />
-              {names[p]}
+              <span className="nav-label">{names[p]}</span>
               {p === "todo" && due.length > 0 && (
                 <span className="nav-count">{due.length}</span>
               )}
@@ -476,10 +504,12 @@ function App() {
         <div className="sidebar-bottom">
           <button
             onClick={() => navigate("settings")}
+            aria-label="Backup & settings"
+            title="Backup & settings"
             className={page === "settings" ? "active" : ""}
           >
             <ShieldCheck size={18} />
-            Backup & settings
+            <span className="nav-label">Backup & settings</span>
           </button>
           <div className="profile">
             <span className="avatar">{session.email[0].toUpperCase()}</span>
@@ -505,9 +535,27 @@ function App() {
         <header className="topbar">
           <div className="breadcrumb">
             <button
+              className="icon-button sidebar-toggle"
+              onClick={toggleSidebar}
+              aria-label={
+                sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!sidebarCollapsed}
+              aria-controls="workspace-navigation"
+            >
+              {sidebarCollapsed ? (
+                <PanelLeftOpen size={20} />
+              ) : (
+                <PanelLeftClose size={20} />
+              )}
+            </button>
+            <button
               className="icon-button mobile-menu"
               onClick={() => setMobile(!mobile)}
               aria-label="Toggle menu"
+              aria-expanded={mobile}
+              aria-controls="workspace-navigation"
             >
               <Menu size={21} />
             </button>

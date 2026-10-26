@@ -1579,3 +1579,49 @@ textarea {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+@media (min-width: 801px) {
+  .app.sidebar-collapsed .sidebar {
+    width: 76px;
+    padding: 32px 12px 0;
+  }
+  .app.sidebar-collapsed main {
+    margin-left: 76px;
+    width: calc(100% - 76px);
+  }
+  .sidebar-collapsed .brand {
+    justify-content: center;
+  }
+  .sidebar-collapsed .brand-icon {
+    margin-right: 0;
+    flex-shrink: 0;
+  }
+  .sidebar-collapsed .brand-name,
+  .sidebar-collapsed .workspace-label,
+  .sidebar-collapsed .nav-label,
+  .sidebar-collapsed .nav-count,
+  .sidebar-collapsed .sidebar-note,
+  .sidebar-collapsed .profile > .avatar,
+  .sidebar-collapsed .profile > div {
+    display: none;
+  }
+  .sidebar-collapsed .sidebar nav {
+    margin-top: 43px;
+  }
+  .sidebar-collapsed .sidebar nav button,
+  .sidebar-collapsed .sidebar-bottom > button {
+    justify-content: center;
+    padding: 12px 0;
+  }
+  .sidebar-collapsed .sidebar-bottom {
+    margin-top: auto;
+  }
+  .sidebar-collapsed .profile {
+    justify-content: center;
+  }
+}
+@media (max-width: 800px) {
+  .sidebar-toggle {
+    display: none;
+  }
+}

@@ -89,7 +89,7 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   await dialog.getByRole("button", { name: "Save opportunity" }).click();
   const opportunities = page.getByRole("table");
   for (const column of [
-    "Opportunity",
+    "Company",
     "Status",
     "Last updated",
     "Next action",
@@ -111,7 +111,60 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   await expect(
     opportunities.getByText("Not recorded", { exact: true }),
   ).toHaveCount(0);
-  await page.getByText("Senior Software Engineer", { exact: true }).click();
+  await expect(
+    opportunities
+      .getByRole("cell")
+      .first()
+      .getByRole("button", { name: "Acme", exact: true }),
+  ).toBeVisible();
+  await expect(
+    opportunities
+      .getByRole("cell")
+      .first()
+      .getByText("Senior Software Engineer", { exact: true }),
+  ).toBeVisible();
+  const expandedSidebarWidth = await page
+    .locator(".sidebar")
+    .evaluate((element) => element.getBoundingClientRect().width);
+  const expandedMainWidth = await page
+    .locator("main")
+    .evaluate((element) => element.getBoundingClientRect().width);
+  await page
+    .getByRole("button", { name: "Collapse sidebar", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Expand sidebar", exact: true }),
+  ).toHaveAttribute("aria-expanded", "false");
+  expect(
+    await page
+      .locator(".sidebar")
+      .evaluate((element) => element.getBoundingClientRect().width),
+  ).toBeLessThan(expandedSidebarWidth);
+  expect(
+    await page
+      .locator("main")
+      .evaluate((element) => element.getBoundingClientRect().width),
+  ).toBeGreaterThan(expandedMainWidth);
+  await page.getByRole("button", { name: "Contacts", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: /Contacts/ }).first(),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Expand sidebar", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Opportunities", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Expand sidebar", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Collapse sidebar", exact: true }),
+  ).toHaveAttribute("aria-expanded", "true");
+  await opportunities
+    .getByRole("button", { name: "Acme", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "Lead", exact: true }),
   ).toBeVisible();
@@ -168,8 +221,16 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   await expect(
     page.getByText("Second follow-up", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Oct 26", { exact: true })).toBeVisible();
-  await expect(page.getByText("Oct 29", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(today === "2026-10-26" ? "Today" : "Oct 26", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(today === "2026-10-29" ? "Today" : "Oct 29", {
+      exact: true,
+    }),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: "Complete First follow-up", exact: true })
     .click();
@@ -208,7 +269,9 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   await expect(dialog.getByLabel("Due date")).toHaveValue("2026-10-29");
   await dialog.getByLabel("Due date").fill("2026-11-02");
   await dialog.getByRole("button", { name: "Save to-do" }).click();
-  await expect(page.getByText("Nov 2", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(today === "2026-11-02" ? "Today" : "Nov 2", { exact: true }),
+  ).toBeVisible();
   await page.getByLabel("Search all records").fill("Networking");
   await expect(
     page.getByText("Networking call", { exact: true }),
@@ -261,7 +324,7 @@ test("personal job search, relationships, follow-ups, search, backup and restore
     submittedRow.getByRole("button", { name: "First follow-up", exact: true }),
   ).toBeVisible();
   await submittedRow
-    .getByRole("button", { name: "New submitted opportunity", exact: true })
+    .getByRole("button", { name: "Example Company", exact: true })
     .click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   dialog = page.getByRole("dialog", { name: "Edit opportunity" });
@@ -278,6 +341,9 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   ).toBeVisible();
   await page.getByRole("button", { name: "Overview", exact: true }).click();
   await page.screenshot({ path: "/tmp/jobcrm-dashboard.png", fullPage: true });
+  await page
+    .getByRole("button", { name: "Collapse sidebar", exact: true })
+    .click();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(
     page.getByRole("heading", { name: "Make room for what’s next." }),
@@ -295,6 +361,9 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   });
   expect(errors).toEqual([]);
   await page.getByRole("button", { name: "Toggle menu" }).click();
+  await expect(
+    page.locator(".sidebar .nav-label").filter({ hasText: "Contacts" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(
     page.getByRole("heading", { name: "Welcome back." }),
