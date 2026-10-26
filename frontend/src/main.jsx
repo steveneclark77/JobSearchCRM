@@ -1734,7 +1734,7 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
             <label>
               {m.kind === "interaction" ? "What happened? *" : "Notes"}
               <textarea
-                rows={4}
+                rows={3}
                 value={m.notes}
                 maxLength={20000}
                 required={m.kind === "interaction"}
