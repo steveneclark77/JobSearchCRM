@@ -69,14 +69,16 @@ if errorlevel 1 (
   echo ERROR: Node.js was not found on PATH. Install Node.js 22 or newer.
   goto failed
 )
-where npm.cmd >nul 2>&1
+call npm --version
 if errorlevel 1 (
-  echo ERROR: npm.cmd was not found on PATH. Check your Node.js installation.
+  echo ERROR: npm could not run in this command window.
+  echo Run this batch file from the same command prompt where npm works.
   goto failed
 )
-where mvn.cmd >nul 2>&1
+call mvn -version >nul 2>&1
 if errorlevel 1 (
-  echo ERROR: mvn.cmd was not found on PATH. Check your Maven installation.
+  echo ERROR: Maven could not run in this command window.
+  echo Check that mvn -version works in the same command prompt.
   goto failed
 )
 set "CRM_JAVA=java.exe"
@@ -92,7 +94,7 @@ if defined JAVA_HOME (
 )
 node.exe --version
 "%CRM_JAVA%" -version
-call mvn.cmd -version
+call mvn -version
 if errorlevel 1 goto failed
 
 set "CRM_STAGE=Installing frontend dependencies"
@@ -100,13 +102,13 @@ echo.
 echo [1/4] Installing frontend dependencies...
 cd frontend
 if errorlevel 1 goto failed
-call npm.cmd ci
+call npm ci
 if errorlevel 1 goto failed
 
 set "CRM_STAGE=Building the frontend"
 echo.
 echo [2/4] Building the frontend...
-call npm.cmd run build
+call npm run build
 if errorlevel 1 goto failed
 
 set "CRM_STAGE=Building and testing the backend"
@@ -114,7 +116,7 @@ echo.
 echo [3/4] Cleaning, testing, and packaging the backend...
 cd ..\backend
 if errorlevel 1 goto failed
-call mvn.cmd clean package
+call mvn clean package
 if errorlevel 1 goto failed
 if not exist "target\jobcrm-0.1.0.jar" (
   echo ERROR: The application JAR was not produced.
