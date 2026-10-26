@@ -1661,3 +1661,32 @@ textarea {
     gap: 12px;
   }
 }
+
+.sortable-column {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.sortable-column svg {
+  flex-shrink: 0;
+  color: #a2ae99;
+}
+th[aria-sort="ascending"] .sortable-column,
+th[aria-sort="descending"] .sortable-column {
+  color: var(--green);
+}
+th[aria-sort="ascending"] .sortable-column svg,
+th[aria-sort="descending"] .sortable-column svg {
+  color: var(--green);
+}
+.sortable-column:hover {
+  color: var(--green);
+}
