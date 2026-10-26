@@ -1640,3 +1640,24 @@ textarea {
     gap: 5px;
   }
 }
+
+.show-inactive-opportunities {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #64795a;
+  cursor: pointer;
+}
+.show-inactive-opportunities input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--green);
+}
+@media (max-width: 480px) {
+  .list-heading:has(.show-inactive-opportunities) {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}

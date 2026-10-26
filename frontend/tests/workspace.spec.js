@@ -339,6 +339,57 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   await expect(
     submittedRow.getByText("Interview", { exact: true }),
   ).toBeVisible();
+  const showInactive = page.getByRole("checkbox", {
+    name: "Show closed and withdrawn",
+    exact: true,
+  });
+  await expect(showInactive).not.toBeChecked();
+  for (const [company, status] of [
+    ["Acme", "closed"],
+    ["Example Company", "withdrawn"],
+  ]) {
+    await opportunities
+      .getByRole("button", { name: company, exact: true })
+      .click();
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    dialog = page.getByRole("dialog", { name: "Edit opportunity" });
+    await dialog
+      .getByRole("combobox", { name: "Status", exact: true })
+      .selectOption(status);
+    await dialog
+      .getByRole("button", { name: "Save opportunity", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Close details", exact: true })
+      .click();
+    await expect(
+      page
+        .getByRole("table")
+        .getByRole("button", { name: company, exact: true }),
+    ).toHaveCount(0);
+  }
+  await expect(
+    page.getByRole("heading", {
+      name: "No active opportunities.",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await showInactive.check();
+  await expect(
+    opportunities.getByText("Closed", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    opportunities.getByText("Withdrawn", { exact: true }),
+  ).toBeVisible();
+  await showInactive.uncheck();
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await showInactive.check();
+  await page.getByRole("button", { name: "Contacts", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Opportunities", exact: true })
+    .click();
+  await expect(showInactive).not.toBeChecked();
+  await expect(page.getByRole("table")).toHaveCount(0);
   await page.getByRole("button", { name: "Overview", exact: true }).click();
   await page.screenshot({ path: "/tmp/jobcrm-dashboard.png", fullPage: true });
   await page

@@ -140,6 +140,7 @@ function App() {
     [page, setPage] = useState("dashboard"),
     [query, setQuery] = useState(""),
     [filter, setFilter] = useState("all"),
+    [showInactiveOpportunities, setShowInactiveOpportunities] = useState(false),
     [modal, setModal] = useState(null),
     [detail, setDetail] = useState(null),
     [error, setError] = useState(""),
@@ -238,6 +239,7 @@ function App() {
   function navigate(p) {
     setPage(p);
     setFilter("all");
+    setShowInactiveOpportunities(false);
     setQuery("");
     setDetail(null);
     setMobile(false);
@@ -397,6 +399,16 @@ function App() {
           .includes(query.toLowerCase())
       : r.kind === page,
   );
+  if (page === "opportunity" && !query && !showInactiveOpportunities) {
+    visible = visible.filter(
+      (opportunity) =>
+        !["closed", "withdrawn"].includes(
+          all("application").find(
+            (application) => application.opportunityId === opportunity.id,
+          )?.status || "lead",
+        ),
+    );
+  }
   if (!query && filter !== "all")
     visible = visible.filter((r) =>
       page === "todo"
@@ -856,6 +868,18 @@ function App() {
                   {query ? "Search results" : names[page]}{" "}
                   <span className="count">{visible.length}</span>
                 </h2>
+                {!query && page === "opportunity" && (
+                  <label className="show-inactive-opportunities">
+                    <input
+                      type="checkbox"
+                      checked={showInactiveOpportunities}
+                      onChange={(e) =>
+                        setShowInactiveOpportunities(e.target.checked)
+                      }
+                    />
+                    Show closed and withdrawn
+                  </label>
+                )}
                 {!query && ["application", "todo"].includes(page) && (
                   <select
                     aria-label="Filter records"
@@ -884,13 +908,21 @@ function App() {
                   <span className="empty-icon">
                     <Search size={26} />
                   </span>
-                  <h3>{query ? "No matches yet." : "A fresh start."}</h3>
+                  <h3>
+                    {query
+                      ? "No matches yet."
+                      : page === "opportunity" && all("opportunity").length > 0
+                        ? "No active opportunities."
+                        : "A fresh start."}
+                  </h3>
                   <p>
                     {query
                       ? "Try another name, company, or keyword."
-                      : "Add your first " +
-                        singular[page] +
-                        " to start building momentum."}
+                      : page === "opportunity" && all("opportunity").length > 0
+                        ? "Select “Show closed and withdrawn” to include your hidden opportunities."
+                        : "Add your first " +
+                          singular[page] +
+                          " to start building momentum."}
                   </p>
                   {!query && (
                     <button className="secondary" onClick={() => edit(page)}>
