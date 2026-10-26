@@ -11,6 +11,26 @@ Install **Node.js 22+**, **JDK 21** (not just a JRE), and **Maven 3.9+**. From t
 ./scripts/start.sh
 ```
 
+### Windows: pull updates, rebuild, and run with one file
+
+From the project folder, double-click **`rebuild-and-run.bat`**, or run it from PowerShell:
+
+```powershell
+.\rebuild-and-run.bat
+```
+
+Stop an existing app instance with Ctrl+C first. This requires a Git clone on `feat/personal-job-search-app` and Git for Windows on PATH. The batch file refuses local changes or untracked files, runs `git pull --ff-only origin feat/personal-job-search-app`, and stops if the update fails. It then checks for Node/npm, a Java JDK, and Maven, reinstalls frontend dependencies with `npm ci`, builds React, runs `mvn clean package` including backend tests, then starts Java from `backend` so it uses the existing `backend/data` database. It preserves your database and backups. It works when the project path contains spaces and uses the file's location rather than the terminal's starting folder.
+
+If you originally downloaded a ZIP, first clone the app branch:
+
+```powershell
+git clone --branch feat/personal-job-search-app https://github.com/steveneclark77/JobSearchCRM.git
+```
+
+With the old app stopped, copy its entire `backend/data` folder into the new checkout's `backend` folder before launching. Keep the old folder and a downloaded JSON backup until you have confirmed your data is present.
+
+Keep the window open while using the app. After startup, visit `http://127.0.0.1:8080` (or your configured `PORT`). Press Ctrl+C to stop; if Windows asks whether to terminate the batch job, choose Y. On a build/startup error, the window stays open so you can read the message. Existing SMTP, database, and other environment settings are inherited; this file does not load `.env` files. Git authentication uses your existing Git setup. If you set SMTP variables only in a PowerShell window, launch the batch file from that same window.
+
 Open `http://127.0.0.1:8080`. Create the first personal account with an email and a password of at least 12 characters. Registration closes after the first account. Passwords are BCrypt hashed; authentication uses an HTTP-only session cookie and CSRF protection. No default account or sample personal data is created.
 
 The production build serves React and the API from the same Java process. Local binding is loopback only. The database is stored in `backend/data/jobcrm.mv.db`; preserve this directory across upgrades. Stop with Ctrl+C. Application sessions expire after 8 hours of inactivity and are not preserved across restarts.
