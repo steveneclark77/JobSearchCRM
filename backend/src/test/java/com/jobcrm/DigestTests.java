@@ -27,6 +27,7 @@ class DigestTests {
     Entry overdue = new Entry();
     overdue.kind = "todo";
     overdue.title = "Call recruiter";
+    overdue.contactId = "recruiter";
     overdue.dueDate = "2026-10-23";
     Entry future = new Entry();
     future.kind = "todo";
@@ -37,7 +38,12 @@ class DigestTests {
     done.title = "Already done";
     done.dueDate = "2026-10-26";
     done.completed = true;
-    when(crm.list("owner")).thenReturn(List.of(due, overdue, future, done));
+    Entry recruiter = new Entry();
+    recruiter.id = "recruiter";
+    recruiter.kind = "contact";
+    recruiter.firstName = "Alex";
+    recruiter.lastName = "Rivera";
+    when(crm.list("owner")).thenReturn(List.of(due, overdue, future, done, recruiter));
     Digests d = new Digests(accounts, crm, mail);
     d.enabled = true;
     d.from = "reminders@example.com";
@@ -50,7 +56,7 @@ class DigestTests {
     verify(mail, times(1)).send(message.capture());
     assertThat(message.getValue().getTo()).containsExactly("me@example.com");
     assertThat(message.getValue().getText())
-        .contains("First follow-up", "Call recruiter")
+        .contains("First follow-up", "Call recruiter", "Alex Rivera")
         .doesNotContain("Next week", "Already done");
     assertThat(a.digestDate).isEqualTo("2026-10-26");
   }

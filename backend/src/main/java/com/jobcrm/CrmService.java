@@ -62,6 +62,8 @@ public class CrmService {
 
   void validate(Entry e, List<Entry> all) {
     // Existing databases and older backups do not contain these optional fields.
+    e.eventType = e.eventType == null ? "" : e.eventType.strip();
+    e.relatedTaskId = e.relatedTaskId == null ? "" : e.relatedTaskId;
     e.phone = e.phone == null ? "" : e.phone.strip();
     e.linkedinUrl = e.linkedinUrl == null ? "" : e.linkedinUrl.strip();
     require(e.kind != null && KINDS.contains(e.kind), "Unknown record type");
@@ -122,9 +124,24 @@ public class CrmService {
     }
     if (e.kind.equals("interaction")) {
       require(!e.contactId.isBlank(), "Choose a contact");
-      require(!e.notes.isBlank(), "Interaction notes are required");
+      require(
+          !e.notes.isBlank() || !e.title.isBlank() || !e.eventType.isBlank(),
+          "Choose an event type or enter a subject or notes");
       require(!e.occurredDate.isBlank(), "Interaction date is required");
     }
+    if (!e.eventType.isBlank()) {
+      require(
+          Set.of("interaction", "todo").contains(e.kind),
+          "Event types apply to logged or planned contact events");
+      require(
+          Set.of("introduction", "follow-up", "meeting", "email", "phone-call", "other")
+              .contains(e.eventType),
+          "Invalid event type");
+      require(!e.contactId.isBlank(), "Choose a contact for this event");
+      if (e.kind.equals("todo")) require(!e.dueDate.isBlank(), "Choose a date for the next event");
+    }
+    if (!e.relatedTaskId.isBlank())
+      require(e.kind.equals("interaction"), "Only logged events can link to a completed task");
     if (!e.url.isBlank())
       try {
         var uri = java.net.URI.create(e.url);
@@ -191,6 +208,11 @@ public class CrmService {
       require(!e.submittedDate.isBlank(), "Set the submission date first");
     if (old != null && old.kind.equals("application") && !old.submittedDate.isBlank())
       require(!e.submittedDate.isBlank(), "Keep the submission date once submitted");
+    boolean logCompletedEvent =
+        e.kind.equals("todo")
+            && !e.eventType.isBlank()
+            && e.completed
+            && (old == null || !old.completed);
     entries.save(e);
     if (submitted && !CLOSED.contains(e.status)) {
       LocalDate first = businessDays(LocalDate.parse(e.submittedDate), 1);
@@ -212,11 +234,28 @@ public class CrmService {
           entries.save(task);
         }
     Entry saved = entries.save(e);
+    if (logCompletedEvent) logCompletedContactEvent(owner, saved);
     if (!opportunityStatus.isBlank()) saveOpportunityStatus(owner, saved.id, opportunityStatus);
     touchOpportunity(owner, e.opportunityId);
     if (!previousOpportunityId.equals(e.opportunityId))
       touchOpportunity(owner, previousOpportunityId);
     return saved;
+  }
+
+  private void logCompletedContactEvent(String owner, Entry task) {
+    if (list(owner).stream()
+        .anyMatch(entry -> entry.kind.equals("interaction") && task.id.equals(entry.relatedTaskId)))
+      return;
+    Entry event = new Entry();
+    event.kind = "interaction";
+    event.contactId = task.contactId;
+    event.opportunityId = task.opportunityId;
+    event.eventType = task.eventType;
+    event.title = task.title;
+    event.notes = task.notes;
+    event.occurredDate = today().toString();
+    event.relatedTaskId = task.id;
+    save(owner, null, event);
   }
 
   private void saveOpportunityStatus(String owner, String opportunityId, String status) {

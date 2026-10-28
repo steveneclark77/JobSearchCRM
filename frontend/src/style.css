@@ -1690,3 +1690,22 @@ th[aria-sort="descending"] .sortable-column svg {
 .sortable-column:hover {
   color: var(--green);
 }
+
+.contacts-table th:nth-child(1) {
+  width: 24%;
+}
+.contacts-table th:nth-child(2) {
+  width: 18%;
+}
+.contacts-table th:nth-child(3),
+.contacts-table th:nth-child(4) {
+  width: 29%;
+}
+.contact-event-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 9px;
+}
+.interaction > div {
+  flex-wrap: wrap;
+}

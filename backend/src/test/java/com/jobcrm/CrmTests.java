@@ -154,6 +154,79 @@ class CrmTests {
     assertThat(service.list(owner).getFirst().linkedinUrl).isEmpty();
   }
 
+  @Test
+  void contactEventWorkflowLogsCompletionOnce() {
+    String owner = "contact-workflow";
+    Entry contact = new Entry();
+    contact.kind = "contact";
+    contact.firstName = "Alex";
+    contact = service.save(owner, null, contact);
+    Entry introduction = new Entry();
+    introduction.kind = "interaction";
+    introduction.contactId = contact.id;
+    introduction.eventType = "introduction";
+    introduction.occurredDate = "2026-10-20";
+    service.save(owner, null, introduction);
+    Entry followup = new Entry();
+    followup.kind = "todo";
+    followup.title = "Follow-up";
+    followup.eventType = "follow-up";
+    followup.contactId = contact.id;
+    followup.dueDate = "2026-10-29";
+    followup.notes = "Ask about a referral";
+    followup = service.save(owner, null, followup);
+    assertThat(service.list(owner).stream().filter(e -> e.kind.equals("interaction"))).hasSize(1);
+    followup.completed = true;
+    followup = service.save(owner, followup.id, followup);
+    var events = service.list(owner).stream().filter(e -> e.kind.equals("interaction")).toList();
+    assertThat(events).hasSize(2);
+    Entry completed =
+        events.stream().filter(e -> e.eventType.equals("follow-up")).findFirst().orElseThrow();
+    assertThat(completed.relatedTaskId).isEqualTo(followup.id);
+    assertThat(completed.contactId).isEqualTo(contact.id);
+    assertThat(completed.occurredDate).isEqualTo(CrmService.today().toString());
+    assertThat(completed.notes).isEqualTo("Ask about a referral");
+    service.save(owner, followup.id, followup);
+    followup.completed = false;
+    followup = service.save(owner, followup.id, followup);
+    followup.completed = true;
+    service.save(owner, followup.id, followup);
+    assertThat(service.list(owner).stream().filter(e -> e.kind.equals("interaction"))).hasSize(2);
+    // A backup/restore preserves event metadata and completion idempotency.
+    var backup =
+        service.list(owner).stream().map(e -> mapper.convertValue(e, Entry.class)).toList();
+    service.restore(owner, backup);
+    Entry restored =
+        service.list(owner).stream().filter(e -> e.kind.equals("todo")).findFirst().orElseThrow();
+    restored.completed = false;
+    restored = service.save(owner, restored.id, restored);
+    restored.completed = true;
+    service.save(owner, restored.id, restored);
+    assertThat(service.list(owner).stream().filter(e -> e.kind.equals("interaction"))).hasSize(2);
+    Entry invalid = new Entry();
+    invalid.kind = "todo";
+    invalid.title = "Meeting";
+    invalid.eventType = "meeting";
+    invalid.contactId = contact.id;
+    assertThatThrownBy(() -> service.save(owner, null, invalid))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+    invalid.dueDate = "2026-10-29";
+    invalid.eventType = "invalid";
+    assertThatThrownBy(() -> service.save(owner, null, invalid))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+    invalid.eventType = "meeting";
+    invalid.contactId = "";
+    assertThatThrownBy(() -> service.save(owner, null, invalid))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+    // General to-dos continue to work without creating contact events.
+    Entry general = new Entry();
+    general.kind = "todo";
+    general.title = "General task";
+    general.completed = true;
+    service.save(owner, null, general);
+    assertThat(service.list(owner).stream().filter(e -> e.kind.equals("interaction"))).hasSize(2);
+  }
+
   JsonNode create(MockHttpSession session, Entry e) throws Exception {
     return mapper.readTree(
         mvc.perform(
@@ -340,7 +413,7 @@ class CrmTests {
     var legacy = backup.deepCopy();
     for (var entry : legacy.get("entries")) {
       ((com.fasterxml.jackson.databind.node.ObjectNode) entry)
-          .remove(List.of("phone", "linkedinUrl"));
+          .remove(List.of("phone", "linkedinUrl", "eventType", "relatedTaskId"));
     }
     mvc.perform(
             post("/api/restore")

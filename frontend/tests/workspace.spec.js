@@ -48,14 +48,14 @@ test("personal job search, relationships, follow-ups, search, backup and restore
       exact: true,
     }),
   ).toHaveAttribute("href", "https://www.linkedin.com/in/alex-rivera");
-  await page.getByRole("button", { name: "Log interaction" }).click();
-  dialog = page.getByRole("dialog", { name: "Add interaction" });
+  await page.getByRole("button", { name: "Log event", exact: true }).click();
+  dialog = page.getByRole("dialog", { name: "Add event" });
   await expect(dialog.getByLabel("Date", { exact: true })).toHaveValue(today);
-  await dialog.getByLabel("Interaction type / subject").fill("Networking call");
+  await dialog.getByLabel("Subject (optional)").fill("Networking call");
   await dialog
     .getByLabel("What happened?")
     .fill("Discussed the platform team and a referral.");
-  await dialog.getByRole("button", { name: "Save interaction" }).click();
+  await dialog.getByRole("button", { name: "Save event" }).click();
   await expect(
     page.getByText("Discussed the platform team and a referral."),
   ).toBeVisible();
@@ -65,6 +65,64 @@ test("personal job search, relationships, follow-ups, search, backup and restore
     await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
   }
   await page.getByRole("button", { name: "Clear search" }).click();
+  const contactsTable = page.getByRole("table", { name: "Contacts" });
+  await expect(
+    contactsTable.getByRole("columnheader", {
+      name: "Last event",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    contactsTable.getByText("Introduction · Networking call", { exact: true }),
+  ).toBeVisible();
+  await contactsTable
+    .getByRole("button", {
+      name: "Set next event for Alex Rivera",
+      exact: true,
+    })
+    .click();
+  dialog = page.getByRole("dialog", { name: "Set next event" });
+  await expect(dialog.getByLabel("Event date")).toHaveValue(today);
+  await expect(
+    dialog.getByRole("combobox", { name: "Event type", exact: true }),
+  ).toHaveValue("follow-up");
+  await dialog.getByLabel("Event date").fill("2026-10-29");
+  await dialog
+    .getByRole("button", { name: "Save next event", exact: true })
+    .click();
+  await expect(
+    contactsTable.getByText("Follow-up", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    contactsTable.getByText("Oct 29, 2026", { exact: true }),
+  ).toBeVisible();
+  await contactsTable
+    .getByRole("button", { name: "Alex Rivera", exact: true })
+    .click();
+  await page
+    .getByRole("dialog", { name: "Record details" })
+    .getByRole("button", { name: "Complete Follow-up", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Record details" })
+      .getByText("No next event scheduled.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Record details" })
+      .getByText("Follow-up", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Close details", exact: true })
+    .click();
+  await expect(
+    contactsTable.getByText("Follow-up", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    contactsTable.getByText("No event scheduled", { exact: true }),
+  ).toBeVisible();
+
   await page
     .getByRole("button", { name: "Opportunities", exact: true })
     .click();
@@ -174,7 +232,9 @@ test("personal job search, relationships, follow-ups, search, backup and restore
   expect(leadRecords.find((r) => r.kind === "application").submittedDate).toBe(
     "",
   );
-  expect(leadRecords.filter((r) => r.kind === "todo")).toHaveLength(0);
+  expect(
+    leadRecords.filter((r) => r.kind === "todo" && r.opportunityId),
+  ).toHaveLength(0);
   await page.getByRole("button", { name: "Lead", exact: true }).click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   dialog = page.getByRole("dialog", { name: "Edit application" });
@@ -227,9 +287,10 @@ test("personal job search, relationships, follow-ups, search, backup and restore
     }),
   ).toBeVisible();
   await expect(
-    page.getByText(today === "2026-10-29" ? "Today" : "Oct 29", {
-      exact: true,
-    }),
+    page
+      .locator(".task-row")
+      .filter({ has: page.getByText("Second follow-up", { exact: true }) })
+      .getByText(today === "2026-10-29" ? "Today" : "Oct 29", { exact: true }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Complete First follow-up", exact: true })
@@ -296,7 +357,7 @@ test("personal job search, relationships, follow-ups, search, backup and restore
     .click();
   await page.locator("input[type=file]").setInputFiles(backupPath);
   await page.getByRole("button", { name: "Replace and restore" }).click();
-  await expect(page.getByText(/Restored 6 records/)).toBeVisible();
+  await expect(page.getByText(/Restored 8 records/)).toBeVisible();
   await page.getByRole("button", { name: "Contacts", exact: true }).click();
   await expect(page.getByText("Alex Rivera", { exact: true })).toBeVisible();
   await expect(page.getByText("Temporary", { exact: true })).toHaveCount(0);

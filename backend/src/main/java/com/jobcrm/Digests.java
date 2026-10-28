@@ -56,6 +56,17 @@ public class Digests {
                   .map(o -> o.title + " at " + o.company)
                   .findFirst()
                   .orElse("");
+          if (opportunity.isBlank() && !e.contactId.isBlank()) {
+            opportunity =
+                records.stream()
+                    .filter(
+                        contact ->
+                            contact.kind.equals("contact")
+                                && java.util.Objects.equals(contact.id, e.contactId))
+                    .map(contact -> (contact.firstName + " " + contact.lastName).strip())
+                    .findFirst()
+                    .orElse("");
+          }
           text.append("• ")
               .append(e.title)
               .append(" — ")

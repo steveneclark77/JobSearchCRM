@@ -22,6 +22,8 @@ public class Entry {
       email = "",
       phone = "",
       linkedinUrl = "",
+      eventType = "",
+      relatedTaskId = "",
       company = "",
       relationship = "",
       url = "",

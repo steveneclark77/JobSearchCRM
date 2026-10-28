@@ -1,3 +1,12 @@
+import ContactsTable from "./ContactsTable";
+import {
+  eventTypes,
+  eventTypeLabel,
+  eventSummary,
+  contactHistory,
+  contactNextEvents,
+  contactEventDate,
+} from "./contactWorkflow";
 import OpportunityTable from "./OpportunityTable";
 import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
@@ -53,7 +62,7 @@ const singular = {
   opportunity: "opportunity",
   application: "application",
   todo: "to-do",
-  interaction: "interaction",
+  interaction: "event",
 };
 const statuses = [
   "lead",
@@ -119,6 +128,8 @@ const blank = (kind) => ({
   email: "",
   phone: "",
   linkedinUrl: "",
+  eventType: kind === "interaction" ? "introduction" : "",
+  relatedTaskId: "",
   company: "",
   relationship: kind === "contact" ? "network" : "",
   url: "",
@@ -230,7 +241,10 @@ function App() {
     title = (r) =>
       r?.kind === "contact"
         ? [r.firstName, r.lastName].filter(Boolean).join(" ")
-        : r?.title || (r?.kind === "interaction" ? "Conversation" : "Untitled"),
+        : r?.title ||
+          (r?.kind === "interaction"
+            ? eventTypeLabel(r.eventType) || "Interaction"
+            : "Untitled"),
     opp = (r) => lookup(r.opportunityId),
     today = localToday();
   const due = all("todo")
@@ -253,6 +267,13 @@ function App() {
         "lead";
     }
     setModal(draft);
+  }
+  function scheduleContactEvent(contact) {
+    edit("todo", {
+      contactId: contact.id,
+      eventType: "follow-up",
+      title: "Follow-up",
+    });
   }
   async function save(e) {
     e.preventDefault();
@@ -385,6 +406,8 @@ function App() {
           r.email,
           r.phone,
           r.linkedinUrl,
+          r.eventType,
+          eventTypeLabel(r.eventType),
           r.company,
           r.source,
           r.status,
@@ -439,7 +462,11 @@ function App() {
         <button className="task-label" onClick={() => setDetail(t.id)}>
           <strong>{t.title}</strong>
           <span>
-            {opp(t) ? title(opp(t)) + " · " + opp(t).company : "Personal to-do"}
+            {opp(t)
+              ? title(opp(t)) + " · " + opp(t).company
+              : t.contactId
+                ? title(lookup(t.contactId))
+                : "Personal to-do"}
           </span>
         </button>
         <span
@@ -931,6 +958,16 @@ function App() {
                     </button>
                   )}
                 </div>
+              ) : page === "contact" && !query ? (
+                <ContactsTable
+                  contacts={visible}
+                  records={records}
+                  onOpen={setDetail}
+                  onLog={(contact) =>
+                    edit("interaction", { contactId: contact.id })
+                  }
+                  onSchedule={scheduleContactEvent}
+                />
               ) : page === "opportunity" && !query ? (
                 <OpportunityTable
                   opportunities={visible}
@@ -1140,6 +1177,8 @@ function App() {
                 ["Source", currentDetail.source],
                 ["Due", currentDetail.dueDate],
                 ["Submitted", currentDetail.submittedDate],
+                ["Event type", eventTypeLabel(currentDetail.eventType)],
+                ["Event date", currentDetail.occurredDate],
                 ["Notes", currentDetail.notes],
               ]
                 .filter(([, v]) => v)
@@ -1234,7 +1273,22 @@ function App() {
             {currentDetail.kind === "contact" && (
               <>
                 <div className="section-line">
-                  <h3>Interaction history</h3>
+                  <h3>Next events</h3>
+                  <button
+                    className="text-button"
+                    onClick={() => scheduleContactEvent(currentDetail)}
+                  >
+                    <Plus size={15} />
+                    Set next event
+                  </button>
+                </div>
+                {contactNextEvents(records, currentDetail.id).length ? (
+                  contactNextEvents(records, currentDetail.id).map(taskRow)
+                ) : (
+                  <p className="muted">No next event scheduled.</p>
+                )}
+                <div className="section-line">
+                  <h3>Event history</h3>
                   <button
                     className="text-button"
                     onClick={() =>
@@ -1242,42 +1296,39 @@ function App() {
                     }
                   >
                     <Plus size={15} />
-                    Log interaction
+                    Log event
                   </button>
                 </div>
-                {all("interaction")
-                  .filter((i) => i.contactId === currentDetail.id)
-                  .sort((a, b) => b.occurredDate.localeCompare(a.occurredDate))
-                  .map((i) => (
-                    <div className="interaction" key={i.id}>
-                      <div>
-                        <MessageSquare size={16} />
-                        <strong>{i.title || "Conversation"}</strong>
-                        <span>{dateLabel(i.occurredDate)}</span>
-                        <button
-                          className="icon-button"
-                          aria-label="Edit interaction"
-                          onClick={() => edit("interaction", i)}
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          className="icon-button danger"
-                          aria-label="Delete interaction"
-                          onClick={() => remove(i)}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      <p>{i.notes}</p>
+                {contactHistory(records, currentDetail.id).map((i) => (
+                  <div className="interaction" key={i.id}>
+                    <div>
+                      <MessageSquare size={16} />
+                      <strong>{eventSummary(i)}</strong>
+                      <span>{contactEventDate(i.occurredDate)}</span>
+                      <button
+                        className="icon-button"
+                        aria-label="Edit event"
+                        onClick={() => edit("interaction", i)}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        className="icon-button danger"
+                        aria-label="Delete event"
+                        onClick={() => remove(i)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                  ))}
+                    <p>{i.notes}</p>
+                  </div>
+                ))}
                 {!all("interaction").some(
                   (i) => i.contactId === currentDetail.id,
                 ) && (
                   <p className="muted">
-                    No interactions logged yet. A quick note today helps your
-                    next conversation.
+                    No events logged yet. A quick note today helps your next
+                    conversation.
                   </p>
                 )}
               </>
@@ -1504,7 +1555,14 @@ function Login({ session, onSuccess, error, setError }) {
   );
 }
 function Editor({ modal: m, setModal, records, save, busy, error }) {
-  const set = (k, v) => setModal((x) => ({ ...x, [k]: v }));
+  const set = (k, v) =>
+    setModal((x) => ({
+      ...x,
+      [k]: v,
+      ...(k === "contactId" && x.kind === "todo" && !v
+        ? { eventType: "" }
+        : {}),
+    }));
   const contacts = records.filter((r) => r.kind === "contact"),
     opportunities = records.filter((r) => r.kind === "opportunity");
   const name = (r) => [r.firstName, r.lastName].filter(Boolean).join(" ");
@@ -1519,6 +1577,38 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
         required={required}
         maxLength={type === "text" ? 1000 : undefined}
       />
+    </label>
+  );
+  const plannedEvent = m.kind === "todo" && !!m.eventType && !!m.contactId;
+  const editorTitle = plannedEvent
+    ? m.id
+      ? "Edit planned event"
+      : "Set next event"
+    : (m.id ? "Edit " : "Add ") + singular[m.kind];
+  const eventTypeControl = (
+    <label>
+      Event type
+      <select
+        value={m.eventType || ""}
+        onChange={(e) => {
+          const updates = { eventType: e.target.value };
+          if (
+            m.kind === "todo" &&
+            (!m.title || m.title === eventTypeLabel(m.eventType))
+          )
+            updates.title = eventTypeLabel(e.target.value);
+          setModal((current) => ({ ...current, ...updates }));
+        }}
+      >
+        <option value="">
+          {m.kind === "todo" ? "General to-do" : "Unspecified"}
+        </option>
+        {eventTypes.map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
     </label>
   );
   const opportunity = (
@@ -1547,15 +1637,13 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label={(m.id ? "Edit " : "Add ") + singular[m.kind]}
+        aria-label={editorTitle}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-top">
           <div>
             <span className="eyebrow">KEEP YOUR MOMENTUM</span>
-            <h2>
-              {m.id ? "Edit" : "Add"} {singular[m.kind]}
-            </h2>
+            <h2>{editorTitle}</h2>
           </div>
           <button
             className="icon-button"
@@ -1645,7 +1733,8 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
                     ))}
                   </select>
                 </label>
-                {input("title", "Interaction type / subject")}
+                {eventTypeControl}
+                {input("title", "Subject (optional)")}
                 {input("occurredDate", "Date", "date", true)}
                 {opportunity}
               </>
@@ -1655,7 +1744,9 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
                   "title",
                   m.kind === "opportunity"
                     ? "Position title *"
-                    : "To-do title *",
+                    : plannedEvent
+                      ? "Event title *"
+                      : "To-do title *",
                   "text",
                   true,
                 )}
@@ -1737,8 +1828,9 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
                   <>
                     {opportunity}
                     <label>
-                      Contact (optional)
+                      {plannedEvent ? "Contact *" : "Contact (optional)"}
                       <select
+                        required={plannedEvent}
                         value={m.contactId}
                         onChange={(e) => set("contactId", e.target.value)}
                       >
@@ -1750,7 +1842,13 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
                         ))}
                       </select>
                     </label>
-                    {input("dueDate", "Due date", "date")}
+                    {m.contactId && eventTypeControl}
+                    {input(
+                      "dueDate",
+                      plannedEvent ? "Event date *" : "Due date",
+                      "date",
+                      plannedEvent,
+                    )}
                     <label className="checkbox-label">
                       <input
                         type="checkbox"
@@ -1764,12 +1862,11 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
               </>
             )}
             <label>
-              {m.kind === "interaction" ? "What happened? *" : "Notes"}
+              {m.kind === "interaction" ? "What happened? (optional)" : "Notes"}
               <textarea
                 rows={3}
                 value={m.notes}
                 maxLength={20000}
-                required={m.kind === "interaction"}
                 onChange={(e) => set("notes", e.target.value)}
                 placeholder={
                   m.kind === "interaction"
@@ -1794,7 +1891,11 @@ function Editor({ modal: m, setModal, records, save, busy, error }) {
               Cancel
             </button>
             <button className="primary" disabled={busy}>
-              {busy ? "Saving…" : "Save " + singular[m.kind]}
+              {busy
+                ? "Saving…"
+                : plannedEvent
+                  ? "Save next event"
+                  : "Save " + singular[m.kind]}
               <Check size={16} />
             </button>
           </div>
